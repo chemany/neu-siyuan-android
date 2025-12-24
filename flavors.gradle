@@ -20,28 +20,28 @@ android {
   // 多渠道打包配置
   productFlavors {
 
-    // 小米/Vivo/OPPO/荣耀
+    // 小米/Vivo/OPPO/荣耀 - 灵枢笔记
     cn profileLqr() >> {
       buildConfigField "String", "CHANNEL", '"cn"'
-      resValue "string", "app_name", "思源笔记"
+      resValue "string", "app_name", "灵枢笔记"
     }
 
-    // Google Play
+    // Google Play - NeuraLink Notes
     googleplay profileLqr() >> {
       buildConfigField "String", "CHANNEL", '"googleplay"'
-      resValue "string", "app_name", "SiYuan"
+      resValue "string", "app_name", "NeuraLink Notes"
     }
 
-    // 华为
+    // 华为 - 灵枢笔记
     huawei profileLqr() >> {
       buildConfigField "String", "CHANNEL", '"huawei"'
-      resValue "string", "app_name", "思源笔记"
+      resValue "string", "app_name", "灵枢笔记"
     }
 
-    // 官方
+    // 官方 - NeuraLink Notes
     official profileLqr() >> {
       buildConfigField "String", "CHANNEL", '"official"'
-      resValue "string", "app_name", "SiYuan"
+      resValue "string", "app_name", "NeuraLink Notes"
     }
 
     // 遍历 productFlavors 多渠道，设置渠道号

@@ -1,0 +1,116 @@
+name: Build 灵枢笔记 Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'app/**'
+      - 'flavors.gradle'
+      - 'build.gradle'
+      - '.github/workflows/build-apk.yml'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: '构建类型'
+        required: true
+        default: 'release'
+        type: choice
+        options:
+          - debug
+          - release
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: 设置 JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: 设置 Python 3
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: 配置 Gradle
+      uses: gradle/gradle-build-action@v3
+      with:
+        gradle-version: wrapper
+
+    - name: 获取 NeuraLink-Notes 前端资源
+      run: |
+        # 克隆 NeuraLink-Notes 仓库（替换为您的仓库地址）
+        git clone --depth 1 https://github.com/your-username/NeuraLink-Notes.git ../NeuraLink-Notes
+
+    - name: 构建前端资源
+      run: |
+        python3 scripts/build-frontend.py
+
+    - name: 创建签名配置
+      run: |
+        # 创建临时签名配置用于调试构建
+        cat > signings.gradle << 'EOF'
+        android {
+            signingConfigs {
+                siyuanConfig {
+                    storeFile file("debug.keystore")
+                    storePassword "android"
+                    keyAlias "androiddebugkey"
+                    keyPassword "android"
+                }
+            }
+        }
+        EOF
+        
+        # 创建 debug keystore
+        keytool -genkey -v -keystore app/debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug,O=Android,C=US"
+
+    - name: 构建 Debug APK
+      if: github.event.inputs.build_type == 'debug' || github.event_name == 'push'
+      run: |
+        ./gradlew assembleCnDebug --stacktrace
+
+    - name: 构建 Release APK
+      if: github.event.inputs.build_type == 'release'
+      run: |
+        ./gradlew assembleCnRelease --stacktrace
+
+    - name: 上传 Debug APK
+      if: success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: 灵枢笔记-debug-apk
+        path: app/build/outputs/apk/cn/debug/*.apk
+        retention-days: 30
+
+    - name: 上传 Release APK
+      if: success() && github.event.inputs.build_type == 'release'
+      uses: actions/upload-artifact@v4
+      with:
+        name: 灵枢笔记-release-apk
+        path: app/build/outputs/apk/cn/release/*.apk
+        retention-days: 90
+
+    - name: 创建 Release
+      if: success() && github.event.inputs.build_type == 'release' && github.ref == 'refs/heads/main'
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ github.run_number }}
+        name: 灵枢笔记 v${{ github.run_number }}
+        draft: false
+        prerelease: false
+        files: |
+          app/build/outputs/apk/cn/release/*.apk
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
